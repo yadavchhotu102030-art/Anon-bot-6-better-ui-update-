@@ -1,3 +1,6 @@
+import telegram
+import sys
+print("✅ Running python-telegram-bot version:", telegram.__version__, file=sys.stderr)
 import os
 import random
 from telegram import (
