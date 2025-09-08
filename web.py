@@ -1,7 +1,7 @@
 import os
 from flask import Flask, request
 from telegram import Update
-from bot import application  # import the Application created in bot.py
+from bot import application  # import the global Application
 
 # Flask app
 app = Flask(__name__)
@@ -11,7 +11,7 @@ app = Flask(__name__)
 def home():
     return "🤖 Anonymous Bot is running with webhook!"
 
-# Webhook endpoint for Telegram
+# Telegram will send updates here
 @app.route(f"/{os.getenv('BOT_TOKEN')}", methods=["POST"])
 def webhook():
     update = Update.de_json(request.get_json(force=True), application.bot)
