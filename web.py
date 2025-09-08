@@ -1,6 +1,6 @@
 import os
-import threading
 from flask import Flask
+from threading import Thread
 from bot import run_polling
 
 app = Flask(__name__)
@@ -13,6 +13,7 @@ def start_bot():
     run_polling()
 
 if __name__ == "__main__":
-    threading.Thread(target=start_bot, daemon=True).start()
+    # Run bot in a *non-daemon* thread so it doesn’t get killed
+    Thread(target=start_bot).start()
     port = int(os.getenv("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
